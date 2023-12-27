@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <errno.h>
 
 int server_socket;
 
@@ -77,12 +78,14 @@ int main() {
 
         int ready_fds = pselect(server_socket + 1, &read_fds, NULL, NULL, &timeout, &mask);
         if (ready_fds == -1) {
-            perror("Error in pselect");
-            exit(EXIT_FAILURE);
-        } else if (ready_fds == 0) {
-            // Тайм-аут, можено добавить дополнительные действия, если это необходимо
-            continue;
-        }
+            if (errno == EINTR) {
+                printf("pselect was interrupted by a signal.\n");
+                continue;
+            } else {
+                perror("Error in pselect");
+                break;
+            }
+        } 
 
         // Принятие нового соединения
         int client_socket = accept(server_socket, (struct sockaddr*)&server_addr, &client_addr_len);
